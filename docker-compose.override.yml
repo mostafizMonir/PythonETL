@@ -1,0 +1,19 @@
+
+
+services:
+  # Override for development/testing
+  etl-app:
+    # Override command for immediate execution instead of scheduling
+    command: ["python", "main.py", "--run-now"]
+    
+    # Add development volumes
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+      - ./:/app  # Mount source code for development
+    
+    # Enable debug logging
+    environment:
+      - LOG_LEVEL=DEBUG
+      - BATCH_SIZE=30000  # Smaller batch size for testing
+      - MAX_WORKERS=3    # Fewer workers for testing 

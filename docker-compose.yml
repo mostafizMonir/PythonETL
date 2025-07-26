@@ -1,0 +1,62 @@
+
+
+services:
+  # ETL Application
+  etl-app:
+    build: .
+    container_name: etl-transfer-app
+    restart: unless-stopped
+    environment:
+      # Source Database Configuration
+      - SOURCE_HOST=${SOURCE_HOST:-source-postgres}
+      - SOURCE_PORT=${SOURCE_PORT:-5432}
+      - SOURCE_DATABASE=${SOURCE_DATABASE:-source_db}
+      - SOURCE_USERNAME=${SOURCE_USERNAME:-postgres}
+      - SOURCE_PASSWORD=${SOURCE_PASSWORD:-password123}
+      
+      # Target Database Configuration
+      - TARGET_HOST=${TARGET_HOST:-target-postgres}
+      - TARGET_PORT=${TARGET_PORT:-5432}
+      - TARGET_DATABASE=${TARGET_DATABASE:-warehouse_db}
+      - TARGET_USERNAME=${TARGET_USERNAME:-postgres}
+      - TARGET_PASSWORD=${TARGET_PASSWORD:-password123}
+      
+      # ETL Configuration
+      - BATCH_SIZE=${BATCH_SIZE:-10000}
+      - MAX_WORKERS=${MAX_WORKERS:-4}
+      - CHUNK_SIZE=${CHUNK_SIZE:-50000}
+      
+      # Table Configuration
+      - SOURCE_TABLE=${SOURCE_TABLE:-source_table}
+      - TARGET_TABLE=${TARGET_TABLE:-target_table}
+      - TARGET_SCHEMA=${TARGET_SCHEMA:-ETL}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-etl_transfer.log}
+      
+      # Connection timeout settings
+      - CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-30}
+      - QUERY_TIMEOUT=${QUERY_TIMEOUT:-300}
+    
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    
+    networks:
+      - etl-network
+    
+    # Command can be overridden for different modes
+    command: ["python", "main.py", "--schedule", "02:00"]
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "from database_manager import DatabaseManager; from config import Config; db = DatabaseManager(Config.get_source_connection_string()); exit(0 if db.test_connection() else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  etl-network:
+    driver: bridge 

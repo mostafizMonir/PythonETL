@@ -1,0 +1,32 @@
+# Source Database Configuration (AWS RDS - where data is extracted from)
+SOURCE_HOST=your-source-rds-endpoint.region.rds.amazonaws.com
+SOURCE_PORT=5432
+SOURCE_DATABASE=your_source_db
+SOURCE_USERNAME=your_username
+SOURCE_PASSWORD=your_password
+SOURCE_SCHEMA=public
+
+# Target Database Configuration (Warehouse RDS - where data is loaded to)
+TARGET_HOST=your-warehouse-rds-endpoint.region.rds.amazonaws.com
+TARGET_PORT=5432
+TARGET_DATABASE=your_warehouse_db
+TARGET_USERNAME=your_username
+TARGET_PASSWORD=your_password
+
+# ETL Configuration
+BATCH_SIZE=10000
+MAX_WORKERS=4
+CHUNK_SIZE=50000
+
+# Table Configuration
+SOURCE_TABLE=your_source_table_name
+TARGET_TABLE=your_target_table_name
+TARGET_SCHEMA=ETL
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FILE=etl_transfer.log
+
+# Connection timeout settings (in seconds)
+CONNECTION_TIMEOUT=30
+QUERY_TIMEOUT=300 

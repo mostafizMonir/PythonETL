@@ -1,0 +1,62 @@
+
+
+services:
+  # Production ETL Application
+  etl-app:
+    build: .
+    container_name: etl-transfer-app-prod
+    restart: unless-stopped
+    environment:
+      # Source Database Configuration (AWS RDS)
+      - SOURCE_HOST=${SOURCE_HOST}
+      - SOURCE_PORT=${SOURCE_PORT:-5432}
+      - SOURCE_DATABASE=${SOURCE_DATABASE}
+      - SOURCE_USERNAME=${SOURCE_USERNAME}
+      - SOURCE_PASSWORD=${SOURCE_PASSWORD}
+      
+      # Target Database Configuration (AWS RDS Warehouse)
+      - TARGET_HOST=${TARGET_HOST}
+      - TARGET_PORT=${TARGET_PORT:-5432}
+      - TARGET_DATABASE=${TARGET_DATABASE}
+      - TARGET_USERNAME=${TARGET_USERNAME}
+      - TARGET_PASSWORD=${TARGET_PASSWORD}
+      
+      # ETL Configuration (optimized for production)
+      - BATCH_SIZE=${BATCH_SIZE:-20000}
+      - MAX_WORKERS=${MAX_WORKERS:-8}
+      - CHUNK_SIZE=${CHUNK_SIZE:-100000}
+      
+      # Table Configuration
+      - SOURCE_TABLE=${SOURCE_TABLE}
+      - TARGET_TABLE=${TARGET_TABLE}
+      - TARGET_SCHEMA=${TARGET_SCHEMA:-ETL}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-etl_transfer.log}
+      
+      # Connection timeout settings
+      - CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-60}
+      - QUERY_TIMEOUT=${QUERY_TIMEOUT:-600}
+    
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    
+    networks:
+      - etl-network
+    
+    # Production scheduling
+    command: ["python", "main.py", "--schedule", "02:00"]
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "from database_manager import DatabaseManager; from config import Config; db = DatabaseManager(Config.get_source_connection_string()); exit(0 if db.test_connection() else 1)"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
+
+networks:
+  etl-network:
+    driver: bridge 
