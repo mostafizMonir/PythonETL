@@ -26,6 +26,11 @@ services:
       - MAX_WORKERS=${MAX_WORKERS:-4}
       - CHUNK_SIZE=${CHUNK_SIZE:-50000}
       
+      # Table Splitting Configuration
+      - ENABLE_TABLE_SPLITTING=${ENABLE_TABLE_SPLITTING:-true}
+      - NUMBER_OF_SPLITS=${NUMBER_OF_SPLITS:-10}
+      - ETL_INTERNAL_SCHEMA=${ETL_INTERNAL_SCHEMA:-etl_internal}
+      
       # Table Configuration
       - SOURCE_TABLE=${SOURCE_TABLE:-source_table}
       - TARGET_TABLE=${TARGET_TABLE:-target_table}

@@ -18,6 +18,11 @@ BATCH_SIZE=10000
 MAX_WORKERS=4
 CHUNK_SIZE=50000
 
+# Table Splitting Configuration (for large datasets)
+ENABLE_TABLE_SPLITTING=true
+NUMBER_OF_SPLITS=10
+ETL_INTERNAL_SCHEMA=etl_internal
+
 # Table Configuration
 SOURCE_TABLE=your_source_table_name
 TARGET_TABLE=your_target_table_name

@@ -207,4 +207,155 @@ class DatabaseManager:
                         return None
         except Exception as e:
             self.logger.error(f"Query execution failed: {e}")
+            raise
+    
+    def create_temp_table_from_source(self, source_table: str, source_schema: str, 
+                                    temp_table_name: str, temp_schema: str, 
+                                    offset: int, limit: int) -> bool:
+        """
+        Create a temporary table with a subset of data from source table
+        
+        Args:
+            source_table: Name of the source table
+            source_schema: Schema of the source table
+            temp_table_name: Name for the temporary table
+            temp_schema: Schema for the temporary table
+            offset: Offset for data selection
+            limit: Number of rows to select
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # First create the schema if it doesn't exist
+            self.create_schema_if_not_exists(temp_schema)
+            
+            # Create temporary table with data from source
+            create_query = f"""
+            CREATE TABLE {temp_schema}.{temp_table_name} AS
+            SELECT * FROM {source_schema}.{source_table}
+            ORDER BY 1  -- Order by first column for consistent pagination
+            LIMIT %s OFFSET %s
+            """
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(create_query, (limit, offset))
+                    conn.commit()
+            
+            # Get the actual number of rows created
+            actual_rows = self.get_row_count(temp_table_name, temp_schema)
+            self.logger.info(f"Created temporary table {temp_schema}.{temp_table_name} with {actual_rows:,} rows")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to create temporary table {temp_schema}.{temp_table_name}: {e}")
+            return False
+    
+    def drop_table(self, table_name: str, schema_name: str) -> bool:
+        """
+        Drop a table from the specified schema
+        
+        Args:
+            table_name: Name of the table to drop
+            schema_name: Schema containing the table
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            drop_query = f"DROP TABLE IF EXISTS {schema_name}.{table_name} CASCADE"
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(drop_query)
+                    conn.commit()
+            
+            self.logger.info(f"Dropped table {schema_name}.{table_name}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to drop table {schema_name}.{table_name}: {e}")
+            return False
+    
+    def get_table_names_in_schema(self, schema_name: str, pattern: str = None) -> List[str]:
+        """
+        Get list of table names in a schema
+        
+        Args:
+            schema_name: Name of the schema
+            pattern: Optional pattern to filter table names (e.g., 'event_plan_member_%')
+            
+        Returns:
+            List[str]: List of table names
+        """
+        try:
+            if pattern:
+                query = """
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s AND table_name LIKE %s
+                ORDER BY table_name
+                """
+                params = (schema_name, pattern)
+            else:
+                query = """
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s
+                ORDER BY table_name
+                """
+                params = (schema_name,)
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, params)
+                    tables = cursor.fetchall()
+                    return [table[0] for table in tables]
+                    
+        except Exception as e:
+            self.logger.error(f"Failed to get table names in schema {schema_name}: {e}")
+            return []
+    
+    def extract_from_temp_table(self, temp_table_name: str, temp_schema: str, 
+                              offset: int, limit: int) -> pd.DataFrame:
+        """
+        Extract data from a temporary table using offset and limit
+        
+        Args:
+            temp_table_name: Name of the temporary table
+            temp_schema: Schema of the temporary table
+            offset: Offset for data selection
+            limit: Number of rows to select
+            
+        Returns:
+            pd.DataFrame: DataFrame containing the extracted data
+        """
+        query = f"""
+        SELECT * FROM {temp_schema}.{temp_table_name}
+        ORDER BY 1  -- Order by first column for consistent pagination
+        LIMIT %s OFFSET %s
+        """
+        
+        try:
+            engine = self.get_engine()
+            df = pd.read_sql(
+                query, 
+                engine, 
+                params=(limit, offset),
+                chunksize=Config.CHUNK_SIZE
+            )
+            
+            # If chunksize is used, read all chunks
+            if hasattr(df, '__iter__'):
+                chunks = []
+                for chunk in df:
+                    chunks.append(chunk)
+                df = pd.concat(chunks, ignore_index=True)
+            
+            return df
+                
+        except Exception as e:
+            self.logger.error(f"Failed to extract from temp table {temp_schema}.{temp_table_name} (offset={offset}, limit={limit}): {e}")
             raise 

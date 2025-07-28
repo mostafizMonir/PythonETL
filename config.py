@@ -24,6 +24,11 @@ class Config:
     MAX_WORKERS = int(os.getenv('MAX_WORKERS', '4'))    # Number of parallel workers
     CHUNK_SIZE = int(os.getenv('CHUNK_SIZE', '50000'))  # Pandas chunk size for reading
     
+    # Table Splitting Configuration
+    ENABLE_TABLE_SPLITTING = os.getenv('ENABLE_TABLE_SPLITTING', 'true').lower() == 'true'
+    NUMBER_OF_SPLITS = int(os.getenv('NUMBER_OF_SPLITS', '10'))  # Number of temporary tables to create
+    ETL_INTERNAL_SCHEMA = os.getenv('ETL_INTERNAL_SCHEMA', 'etl_internal')  # Schema for temporary tables
+    
     # Table Configuration
     SOURCE_TABLE = os.getenv('SOURCE_TABLE', 'your_source_table')
     TARGET_TABLE = os.getenv('TARGET_TABLE', 'your_target_table')

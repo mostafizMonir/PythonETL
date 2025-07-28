@@ -47,6 +47,10 @@ def run_transfer(drop_target_if_exists: bool = False, incremental: bool = False,
         logger.info(f"Target Table: {Config.TARGET_TABLE}")
         logger.info(f"Batch Size: {Config.BATCH_SIZE:,}")
         logger.info(f"Max Workers: {Config.MAX_WORKERS}")
+        logger.info(f"Table Splitting: {'Enabled' if Config.ENABLE_TABLE_SPLITTING else 'Disabled'}")
+        if Config.ENABLE_TABLE_SPLITTING:
+            logger.info(f"Number of Splits: {Config.NUMBER_OF_SPLITS}")
+            logger.info(f"ETL Internal Schema: {Config.ETL_INTERNAL_SCHEMA}")
         logger.info("=" * 60)
         
         # Initialize ETL transfer
@@ -132,6 +136,24 @@ def main():
         help='Run transfer immediately (default behavior)'
     )
     
+    parser.add_argument(
+        '--enable-splitting',
+        action='store_true',
+        help='Enable table splitting for large datasets'
+    )
+    
+    parser.add_argument(
+        '--disable-splitting',
+        action='store_true',
+        help='Disable table splitting (use traditional batch processing)'
+    )
+    
+    parser.add_argument(
+        '--splits',
+        type=int,
+        help='Number of temporary tables to create for splitting (default: 10)'
+    )
+    
     args = parser.parse_args()
     
     # Setup logging
@@ -146,6 +168,23 @@ def main():
     if args.schedule and args.run_now:
         logger.error("Cannot use both --schedule and --run-now")
         sys.exit(1)
+    
+    if args.enable_splitting and args.disable_splitting:
+        logger.error("Cannot use both --enable-splitting and --disable-splitting")
+        sys.exit(1)
+    
+    # Override configuration based on command line arguments
+    if args.enable_splitting:
+        Config.ENABLE_TABLE_SPLITTING = True
+        logger.info("Table splitting enabled via command line")
+    
+    if args.disable_splitting:
+        Config.ENABLE_TABLE_SPLITTING = False
+        logger.info("Table splitting disabled via command line")
+    
+    if args.splits:
+        Config.NUMBER_OF_SPLITS = args.splits
+        logger.info(f"Number of splits set to {args.splits} via command line")
     
     # Run based on arguments
     if args.schedule:

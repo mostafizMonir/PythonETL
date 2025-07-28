@@ -13,7 +13,7 @@ services:
       - ./:/app  # Mount source code for development
     
     # Enable debug logging
-    environment:
-      - LOG_LEVEL=DEBUG
-      - BATCH_SIZE=30000  # Smaller batch size for testing
-      - MAX_WORKERS=3    # Fewer workers for testing 
+    # environment:
+    #   - LOG_LEVEL=DEBUG
+    #   - BATCH_SIZE=50000  # Smaller batch size for testing
+    #   - MAX_WORKERS=4    # Fewer workers for testing 

@@ -63,6 +63,11 @@ BATCH_SIZE=10000          # Rows per batch (adjust based on memory)
 MAX_WORKERS=4             # Number of parallel workers
 CHUNK_SIZE=50000          # Pandas chunk size for reading
 
+# Table Splitting Configuration (for large datasets)
+ENABLE_TABLE_SPLITTING=true    # Enable table splitting for better performance
+NUMBER_OF_SPLITS=10            # Number of temporary tables to create
+ETL_INTERNAL_SCHEMA=etl_internal  # Schema for temporary tables
+
 # Table Configuration
 SOURCE_TABLE=your_source_table_name
 TARGET_TABLE=your_target_table_name
@@ -114,19 +119,67 @@ python main.py --schedule "02:30"
 python main.py --schedule "23:45"
 ```
 
+### docker compose run command 
+
+docker-compose run --rm etl-app python main.py --enable-splitting --splits 8
+
 ### Command Line Options
 
 ```bash
 python main.py [OPTIONS]
 
 Options:
-  --drop-target     Drop target table if it exists before transfer
-  --incremental     Perform incremental transfer
-  --date-column     Date column name for incremental transfer
-  --schedule        Schedule time (e.g., "14:30" for daily at 2:30 PM)
-  --run-now         Run transfer immediately (default behavior)
-  -h, --help        Show help message
+  --drop-target       Drop target table if it exists before transfer
+  --incremental       Perform incremental transfer
+  --date-column       Date column name for incremental transfer
+  --schedule          Schedule time (e.g., "14:30" for daily at 2:30 PM)
+  --run-now           Run transfer immediately (default behavior)
+  --enable-splitting  Enable table splitting for large datasets
+  --disable-splitting Disable table splitting (use traditional batch processing)
+  --splits            Number of temporary tables to create for splitting (default: 10)
+  -h, --help          Show help message
 ```
+
+### Table Splitting for Large Datasets
+
+For very large datasets (10+ million rows), the tool supports table splitting to improve performance:
+
+```bash
+# Enable table splitting with 15 splits
+python main.py --enable-splitting --splits 15
+
+# Disable table splitting (use traditional method)
+python main.py --disable-splitting
+```
+
+**How Table Splitting Works:**
+1. The source table is split into multiple temporary tables in the `etl_internal` schema
+2. Each temporary table contains a subset of the data (e.g., 600,000 rows each for 6M total with 10 splits)
+3. Data is transferred from each temporary table sequentially
+4. Temporary tables are automatically cleaned up after transfer
+
+**Benefits:**
+- Better memory management for very large datasets
+- Reduced risk of timeouts on large queries
+- More predictable performance
+- Easier to monitor progress
+
+### Testing Table Splitting
+
+Before running the full transfer with table splitting, you can test the functionality:
+
+```bash
+# Test table splitting functionality
+python test_table_splitting.py
+```
+
+This test script will:
+1. Validate database connections
+2. Check source table information
+3. Test table splitting calculations
+4. Verify ETL internal schema creation
+5. Clean up any existing temporary tables
+6. Test creating a small temporary table
 
 ## Performance Optimization
 
@@ -138,6 +191,15 @@ The tool is optimized for large datasets with these default settings:
 - **Parallel Workers**: 4 concurrent processes
 - **Chunk Size**: 50,000 rows for pandas reading
 - **Connection Pooling**: 5 connections with 10 overflow
+
+### For 10+ Million Rows (Table Splitting)
+
+For very large datasets, enable table splitting:
+
+- **Table Splitting**: Enabled by default for large datasets
+- **Number of Splits**: 10 temporary tables (configurable)
+- **Rows per Split**: ~1 million rows each (for 10M total)
+- **Sequential Processing**: Each temporary table processed separately
 
 ### Adjusting Performance
 
